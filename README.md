@@ -1,265 +1,268 @@
-# Python 网络设备自动巡检与监控系统
+<div align="center">
 
-输入设备 IP 列表，自动完成 **Ping 连通性检测 → SSH 信息采集 → MySQL 存储 → 巡检报告生成** 的完整链路。
+# NetInspect
 
-支持华为（VRP）、H3C（Comware）、Cisco（IOS）设备，Ruijie / Juniper 按通用规则采集；无真机时可使用内置的模拟设备完成演示。
+**Python 网络设备自动巡检与监控系统**
 
-## 功能
+从一份 IP 清单出发，完成连通性检测、SSH 采集、结果入库与可视化报告。
 
-| 能力 | 说明 |
+[![CI](https://github.com/ibi6/netinspect/actions/workflows/ci.yml/badge.svg)](https://github.com/ibi6/netinspect/actions/workflows/ci.yml)
+[![Live Demo](https://img.shields.io/badge/LIVE_DEMO-GitHub_Pages-ff5c93?style=flat-square)](https://ibi6.github.io/netinspect/)
+[![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
+[![Flask](https://img.shields.io/badge/Flask-3.x-000000?style=flat-square&logo=flask)](https://flask.palletsprojects.com/)
+[![MySQL](https://img.shields.io/badge/MySQL-5.7%2B-4479A1?style=flat-square&logo=mysql&logoColor=white)](https://www.mysql.com/)
+[![Paramiko](https://img.shields.io/badge/SSH-Paramiko-2f6f4e?style=flat-square)](https://www.paramiko.org/)
+
+[在线演示](https://ibi6.github.io/netinspect/) · [快速开始](#快速开始) · [架构](#架构) · [API](#api-一览)
+
+</div>
+
+![NetInspect 仪表盘](docs/assets/dashboard-dark.webp)
+
+## 项目简介
+
+NetInspect 面向网络运维场景：输入设备 IP 清单后，自动完成 **Ping 连通性检测 → Paramiko SSH 登录 → 多厂商命令采集 → MySQL 存储 → HTML 报告 / Web 仪表盘展示**。
+
+项目同时提供三个入口：
+
+| 入口 | 用途 |
 | --- | --- |
-| 批量 IP 检测 | 单个 IP、CIDR 网段、末段范围（`192.168.1.10-20`），多线程并发 |
-| Ping 检测 | 可达性、平均延迟、TTL、丢包率，跨 Windows / Linux / macOS |
-| SSH 采集 | Paramiko 交互式 shell，自动识别命令提示符、关闭分页 |
-| 厂商识别 | 根据 `display version` / `show version` 输出自动识别 |
+| `python main.py run` | 一次性巡检，输出终端表格和静态 HTML 报告，适合脚本/计划任务 |
+| `python main.py web` | Web 仪表盘，实时进度、趋势分析、设备管理、自动巡检 |
+| GitHub Pages | 纯前端静态演示，不需要后端即可体验完整界面 |
+
+## 界面预览
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/assets/dashboard-light.webp" alt="浅色仪表盘"></td>
+    <td width="50%"><img src="docs/assets/trends-dark.webp" alt="趋势分析"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>浅色主题 · 总览 / 环图 / 设备明细</sub></td>
+    <td align="center"><sub>深色主题 · CPU、内存、延迟、异常趋势</sub></td>
+  </tr>
+</table>
+
+<table>
+  <tr>
+    <td width="52%"><img src="docs/assets/device-dialog.webp" alt="添加真实设备"></td>
+    <td width="48%">
+      <h3>不是只有 Mock</h3>
+      <p>设备清单页可以直接添加真实交换机 / 路由器：IP、名称、厂商、SSH 端口、账号、密码、是否采集。</p>
+      <p>页面添加的设备保存在本机 <code>devices.yaml</code>，密码不会回传到浏览器；CLI 与 Web 共用这份清单。</p>
+      <p>内置华为 / Cisco 模拟设备，方便无真机时演示完整 SSH 采集链路。</p>
+    </td>
+  </tr>
+</table>
+
+## 核心能力
+
+| 模块 | 说明 |
+| --- | --- |
+| 批量 IP 检测 | 单个 IP、CIDR、末段范围（`192.168.1.10-20`），多线程并发 |
+| Ping | 可达性、平均延迟、TTL、丢包率，兼容 Windows / Linux / macOS |
+| SSH 采集 | Paramiko 交互式 shell，自动识别提示符、关闭分页、失败重试 |
+| 厂商适配 | 华为 VRP、H3C Comware、Cisco IOS；Ruijie / Juniper 按通用规则解析 |
 | 设备信息 | 主机名、厂商、型号、系统版本、运行时长、CPU、内存、接口 up/down |
-| 结果存储 | MySQL（SQLAlchemy Core），一次巡检对应一组主表 + 明细；SQLite 可用于本地演示 |
-| 巡检报告 | 自包含 HTML（汇总卡片 + 明细表）与终端表格 |
-| Web 仪表盘 | Flask + 原生前端：实时进度、趋势图、自动巡检、导出、资源环图、连通性扫描 |
-| 模拟设备 | 内置华为 / Cisco 模拟 SSH 设备，便于无真机联调与答辩演示 |
+| 数据存储 | MySQL（SQLAlchemy Core）为主；SQLite 用于本地演示 |
+| 报告 | 自包含 HTML 报告 + 终端等宽表格 |
+| Web 仪表盘 | 实时巡检进度、趋势图、设备增删改、自动巡检、CSV/JSON 导出、浅/深主题 |
+| 工程化 | 35 个 pytest 用例、ruff、GitHub Actions（Python 3.11 / 3.13） |
 
-## 目录结构
+## 在线演示
 
-```text
-python巡检/
-├── main.py                     # 命令行入口
-├── config.yaml                 # 数据库、Ping、SSH、设备配置
-├── devices.txt                 # 设备清单示例
-├── devices.yaml                # 页面添加的真实设备（运行时生成，已忽略）
-├── inspect.db                  # SQLite 演示库（运行时生成，已忽略）
-├── netinspect/
-│   ├── cli.py                  # run / scan / report / init-db / web
-│   ├── config.py               # 配置与设备清单解析
-│   ├── ping.py                 # Ping 检测、CIDR/范围展开、批量并发
-│   ├── ssh.py                  # Paramiko 会话、提示符与分页处理
-│   ├── parsers.py              # 多厂商输出解析
-│   ├── collector.py            # 单设备巡检与并发调度
-│   ├── storage.py              # SQLAlchemy 存储层（MySQL/SQLite）
-│   ├── inventory.py            # 页面添加的真实设备（devices.yaml）
-│   ├── report.py               # HTML 报告与终端摘要
-│   ├── web.py                  # Flask 仪表盘与实时巡检 API
-│   └── templates/
-│       ├── report.html         # 静态报告模板
-│       └── dashboard.html      # Web 仪表盘（含样式与交互）
-├── sql/schema.sql              # MySQL 建表脚本（可选，与程序一致）
-├── demo/
-│   ├── fake_device.py          # 模拟 SSH 网络设备
-│   └── devices_demo.txt        # 演示用设备清单
-├── tests/                      # pytest 测试
-├── reports/                    # 报告输出目录
-├── requirements.txt
-└── requirements-dev.txt
-```
+**[https://ibi6.github.io/netinspect/](https://ibi6.github.io/netinspect/)**
+
+演示站是纯静态页面，通过前端 mock 拦截 `/api/*`，可以实际点击：
+
+- 开始巡检，观察 4 台设备的实时进度、正常/不可达切换；
+- 设备清单添加、编辑、删除设备；
+- 趋势分析、设备详情、历史记录、连通性扫描；
+- 浅色 / 深色主题切换。
+
+数据为模拟数据，不会发起真实网络请求。
 
 ## 架构
 
 ```mermaid
 flowchart LR
-    A[设备清单<br/>IP/CIDR] --> B[并发调度]
-    B --> C[Ping 检测]
-    B --> D[SSH 采集]
-    D --> E[厂商识别与解析]
-    C --> F[DeviceResult]
-    E --> F
-    F --> G[(MySQL)]
-    F --> H[HTML 报告]
-    G --> H
-    G --> I[Web 仪表盘<br/>实时进度 / 历史记录]
-    J[浏览器] --> I
+    U[浏览器] --> W[Flask Web API]
+    C[CLI] --> S[巡检调度]
+    W --> S
+    S --> P[Ping 检测]
+    S --> H[Paramiko SSH]
+    H --> R[厂商识别 / 输出解析]
+    S --> D[(MySQL / SQLite)]
+    D --> W
+    D --> T[HTML 报告]
+    R --> D
+    M[静态演示 mock] -.-> U
 ```
 
-## 环境要求
+设计要点：
 
-- Python 3.11+
-- 能访问设备的 ICMP（Ping 被防火墙禁止时，可只用 SSH 采集）
-- MySQL 5.7+ / 8.0（仅用 SQLite 演示时不需要）
+- **采集与展示分离**：`collector` 只产出 `DeviceResult`，CLI 和 Web 复用同一套采集、存储、报告代码。
+- **单设备失败隔离**：并发巡检中任意设备超时/登录失败，不影响整批任务。
+- **交互式 SSH**：网络设备通常没有 exec channel，统一使用 `invoke_shell` + 提示符结束标记。
+- **连接池复用**：Web 进程内复用 SQLAlchemy Engine，实时轮询不会反复创建连接池。
 
-## 安装
+## 快速开始
+
+### 1. 安装
 
 ```bash
+git clone https://github.com/ibi6/netinspect.git
+cd netinspect
 pip install -r requirements.txt
 ```
 
-## 配置
+要求 Python 3.11+。
 
-### 1. 数据库
+### 2. 本地演示（无需 MySQL、无需真机）
 
-创建库和账号（或让程序自动建库）：
+```bash
+python main.py web --demo --db-url sqlite:///demo.db
+```
+
+打开 <http://127.0.0.1:8777>，点击「开始巡检 → 演示设备」。
+
+### 3. 接入真实设备
+
+修改 `config.yaml` 的 SSH 默认账号、密码和数据库连接，或直接运行 Web 后在「设备清单」添加设备。
+
+```bash
+python main.py init-db          # 创建 MySQL 库表
+python main.py web              # http://127.0.0.1:8777
+```
+
+也可以在命令行执行一次巡检：
+
+```bash
+python main.py run --devices devices.txt
+python main.py scan 192.168.1.0/24 -c 1 --timeout-ms 500
+python main.py report --run latest --out reports/latest.html
+```
+
+`devices.txt` 每行格式：`IP[,名称[,厂商[,端口]]]`。
+
+### 4. MySQL
 
 ```sql
 CREATE DATABASE net_inspect DEFAULT CHARACTER SET utf8mb4;
-CREATE USER 'netinspect'@'%' IDENTIFIED BY '你的密码';
+CREATE USER 'netinspect'@'%' IDENTIFIED BY 'your-password';
 GRANT ALL PRIVILEGES ON net_inspect.* TO 'netinspect'@'%';
-FLUSH PRIVILEGES;
 ```
-
-修改 `config.yaml`：
 
 ```yaml
 database:
-  url: "mysql+pymysql://netinspect:你的密码@127.0.0.1:3306/net_inspect?charset=utf8mb4"
-  echo: false
+  url: "mysql+pymysql://netinspect:your-password@127.0.0.1:3306/net_inspect?charset=utf8mb4"
 ```
 
-初始化表结构：
+也可以直接执行 `sql/schema.sql`。
 
-```bash
-python main.py init-db
-```
+## 设备管理
 
-也可以直接执行 `sql/schema.sql` 手工建表。
+- Web「设备清单 → 添加设备」支持 **添加 / 编辑 / 删除**，保存到 `devices.yaml`。
+- `config.yaml` 中的设备为只读配置，同样会显示在列表中。
+- 密码字段留空表示沿用 `config.yaml` 的全局 SSH 密码。
+- 页面添加的密码仅保存在本机 `devices.yaml`（已加入 `.gitignore`），API 不会返回密码。
+- CLI `run` 会自动合并 `config.yaml` 与 `devices.yaml`；显式 `--devices` 时以指定文件为准。
 
-连接串优先级的覆盖顺序：`--db-url` > 环境变量 `NETINSPECT_DB_URL` > `config.yaml`。
+## API 一览
 
-### 2. 设备与 SSH
+| Method | Path | 说明 |
+| --- | --- | --- |
+| `GET` | `/api/overview` | 最近巡检、统计、历史、自动巡检状态 |
+| `POST` | `/api/inspect` | 启动巡检：`{source, ssh}` |
+| `GET` | `/api/inspect/status` | 实时进度与逐台结果 |
+| `GET` | `/api/devices` | 配置设备、页面添加设备、演示设备 |
+| `POST` | `/api/devices` | 添加真实设备 |
+| `PUT` | `/api/devices/{id}` | 编辑设备 |
+| `DELETE` | `/api/devices/{id}` | 删除设备 |
+| `GET` | `/api/trends` | 最近 N 次巡检的 CPU / 内存 / 延迟 / 异常趋势 |
+| `GET` | `/api/device/history` | 单台设备历史：`?ip=&name=` |
+| `GET` | `/api/result/{id}` | 单次采集详情与原始输出 |
+| `POST` | `/api/scan` | 批量 Ping：`{targets, timeout_ms}` |
+| `GET` | `/api/auto` · `POST` | 自动巡检状态 / 开关 |
+| `GET` | `/api/report/{id}` | 渲染 HTML 报告 |
+| `GET` | `/api/export/{id}?format=csv\|json` | 导出巡检结果 |
 
-```yaml
-ssh:
-  port: 22
-  username: admin
-  password: "设备登录密码"
-  timeout: 10          # 建立连接超时（秒）
-  command_timeout: 8   # 单条命令超时（秒）
-  retries: 1           # 失败重试次数
-```
+## 数据模型
 
-SSH 用户名/密码可用环境变量 `NETINSPECT_SSH_USER`、`NETINSPECT_SSH_PASSWORD` 覆盖，避免明文写入配置。
+| 表 | 作用 |
+| --- | --- |
+| `inspection_runs` | 一次巡检：起止时间、设备总数、可达数、SSH 成功数、异常数 |
+| `device_results` | 每台设备每次巡检：Ping 指标、SSH 状态、厂商/型号/版本、CPU/内存、接口、错误、原始输出 JSON |
 
-设备清单文件每行格式：`IP[,名称[,厂商[,端口]]]`，`#` 之后为注释：
+## 支持设备
 
-```text
-192.168.1.1,核心交换机,huawei,22
-192.168.1.2,汇聚交换机,h3c
-192.168.1.254,出口路由器,cisco
-```
+| 厂商 | 版本命令 | 状态 |
+| --- | --- | --- |
+| Huawei VRP | `display version` / `display cpu-usage` / `display memory-usage` / `display interface brief` | 已适配 |
+| H3C Comware | `display version` / `display cpu-usage` / `display memory` / `display interface brief` | 已适配 |
+| Cisco IOS | `show version` / `show processes cpu` / `show memory statistics` / `show ip interface brief` | 已适配 |
+| Ruijie | `show version` / `show cpu` / `show memory` | 通用规则 |
+| Juniper | `show version` / `show chassis routing-engine` | 基础适配 |
 
-厂商字段只作为识别提示，最终厂商以设备版本输出为准。
+> 不同型号/软件版本的输出存在差异，接入时可在 `netinspect/parsers.py` 补充正则。
 
-## 使用
-
-### 批量连通性扫描
-
-```bash
-python main.py scan 192.168.1.0/24 -c 1 --timeout-ms 500
-python main.py scan 192.168.1.10-20 10.0.0.1
-```
-
-只做 Ping、不写数据库。`--save devices.txt` 可把可达地址追加到设备清单。
-
-`python main.py run` 会自动合并 `devices.yaml`（页面添加的设备）与 `config.yaml` 中的设备；显式指定 `--devices` 时以该文件为准。
-
-### 执行巡检
-
-```bash
-# 使用配置内 devices 或 --devices 清单，结果写入 MySQL 并生成 HTML
-python main.py run --devices devices.txt --report-dir reports
-
-# 只做 Ping（跳过 SSH）
-python main.py run --devices devices.txt --no-ssh
-
-# 覆盖数据库
-python main.py run --devices devices.txt --db-url "mysql+pymysql://root:密码@127.0.0.1:3306/net_inspect?charset=utf8mb4"
-```
-
-### 重新生成历史报告
-
-```bash
-python main.py report --run latest
-python main.py report --run 3 --out reports/run3.html
-```
-
-### 本地无 MySQL 演示
-
-```bash
-python main.py run --devices demo/devices_demo.txt --db-url sqlite:///demo.db
-```
-
-
-## Web 仪表盘
-
-```bash
-# 一条命令启动：自动拉起华为 / Cisco 模拟设备，使用 SQLite 演示库
-python main.py web --demo --db-url sqlite:///demo.db
-
-# 接真实设备 / MySQL（先配置好 config.yaml）
-python main.py web
-```
-
-浏览器访问 <http://127.0.0.1:8777>。
-
-页面能力：
-
-- **总览**：巡检快照、系统信息、CPU/内存环图、设备总数/可达/SSH/异常/平均延迟、设备明细表。
-- **巡检**：右上角「开始巡检」可选择配置清单或演示设备、开关 SSH 采集；巡检期间实时显示完成进度与每台设备状态。
-- **设备清单**：页面直接添加 / 编辑 / 删除真实设备（IP、名称、厂商、端口、账号、密码、SSH 开关），保存在 `devices.yaml`；`config.yaml` 中的设备也会列出。密码不会回传到前端，留空则继承 `config.yaml` 的全局 SSH 密码。
-- **巡检记录**：最近 8 次巡检，直接打开对应的 HTML 报告。
-- **趋势分析**：最近 12 次巡检的 CPU / 内存 / 延迟折线与异常设备柱状图，带悬浮详情。
-- **连通性扫描**：输入 IP / CIDR / 范围，Ping 结果直接显示在页面。
-- **自动巡检**：服务端定时任务，可设 5 / 15 / 30 / 60 分钟间隔，关闭页面仍继续执行。
-- **导出**：最新巡检一键下载 CSV（Excel 兼容）或 JSON。
-- 设备详情：点击「详情」查看厂商、型号、版本、CPU/内存/接口，以及版本/CPU/内存/接口原始输出。
-- 支持浅色 / 深色主题切换（记忆到浏览器本地）；页面切换、数字滚动、环图、图表绘制、进度条均有动效，并尊重 `prefers-reduced-motion`。
-
-> 默认只监听 `127.0.0.1`；需要局域网访问时用 `--host 0.0.0.0`，但项目没有登录鉴权，请勿直接暴露到公网。Flask 自带服务器仅适合演示，生产可用 waitress / gunicorn 托管 `netinspect.web:create_app`。
->
-> 如果浏览器曾在该端口运行过其他项目，可能因旧 Service Worker 缓存看到别的页面。换一个端口（默认已改为 8777），或在 DevTools → Application → Service Workers 中注销旧站点后刷新。
-
-## 无真机演示（模拟设备）
-
-1. 启动两个模拟设备（华为 / Cisco，两个终端窗口）：
-
-```bash
-python demo/fake_device.py --vendor huawei --port 22201 --hostname CoreSW
-python demo/fake_device.py --vendor cisco  --port 22202 --hostname EdgeSW
-```
-
-2. 直接使用演示清单巡检（含一台不可达设备 `192.0.2.1`）：
-
-```bash
-python main.py run --devices demo/devices_demo.txt --db-url sqlite:///demo.db
-```
-
-预期：2 台设备 SSH 采集成功，1 台显示不可达；控制台打印汇总表并生成 `reports/inspection_*.html`。
-
-## 存储结构
-
-- `inspection_runs`：每次巡检的编号、起止时间、设备总数、可达数、SSH 成功数、异常数。
-- `device_results`：每台设备每次巡检的 Ping 指标、SSH 状态、厂商/型号/版本/运行时长、CPU/内存、接口数量、错误信息与原始命令输出（JSON）。
-
-原始输出字段 `raw` 保留 `version/cpu/memory/interfaces` 命令结果（每个最多 8000 字符），便于回溯解析问题。
-
-## 报告
-
-`reports/inspection_<编号>_<时间>.html` 为自包含 HTML：
-
-- 顶部汇总卡片：设备总数、Ping 可达、SSH 成功、异常设备；
-- 明细表：名称、IP、状态、主机名、厂商/型号、系统版本、运行时长、CPU、内存、接口 up/down、延迟、丢包、备注；
-- 异常行高亮，所有样式内联，可直接提交或打印。
-
-终端同时输出等宽对齐的汇总表（按中文显示宽度对齐）。
-
-## 支持与限制
-
-- 完整适配：华为 VRP（`display version` / `display cpu-usage` / `display memory-usage` / `display interface brief`）、H3C Comware、Cisco IOS。
-- Ruijie、Juniper 已配置对应命令并按通用规则解析，实际型号需按现场输出微调正则。
-- SSH 采集假设账号登录后具备执行查询命令的权限；如设备要求 `enable` 或 `super`，需在设备侧预先提权。
-- Ping 失败时不会继续建立 SSH 连接（先确认网络可达再采集），这是当前调度策略；仅需 Ping 结果时使用 `--no-ssh`。
-- SSH 默认使用 `AutoAddPolicy`，不校验设备主机密钥；生产环境应改为维护 `known_hosts` 并拒绝未知主机。
-- Web 仪表盘面向本机演示，没有账号体系；实时进度采用轮询（800ms），不是 WebSocket。
-- 页面添加的设备保存在本机 `devices.yaml`（已加入 `.gitignore`），密码为明文存储；生产环境应改为凭据库 / 环境变量。
-
-## 测试
+## 测试与 CI
 
 ```bash
 pip install -r requirements-dev.txt
+ruff check .
 python -m pytest -q
 ```
 
-测试覆盖：CIDR/范围展开、Ping、多厂商解析、配置解析、SQLite 存储往返、HTML/终端报告、模拟设备 SSH 采集与并发巡检调度，以及 Web API 的巡检流程、报告、扫描、设备增删改与趋势接口。
+当前 **35 个测试通过**，覆盖目标展开、Ping、多厂商解析、配置、SQLite 存储、报告、模拟 SSH 采集、并发调度、Web 巡检流程、设备增删改、趋势与导出 API。
 
-## 定时巡检
+GitHub Actions 在每次 push / PR 时对 Python 3.11 和 3.13 执行 lint + 测试。
 
-程序每次执行完成一次巡检后退出。生产环境可用系统计划任务驱动：
+## 部署
 
-- Windows：任务计划程序，触发器每日定时，操作 `python G:\python巡检\main.py run --devices devices.txt`
-- Linux：`crontab -e`，例如 `0 2 * * * cd /opt/netinspect && python main.py run --devices devices.txt`
+- Web 仪表盘使用 Flask 自带服务器，仅适合本机演示；生产环境建议使用 waitress / gunicorn 托管 `create_app()`。
+- 静态演示位于 `docs/`，由 GitHub Pages 直接托管，无需服务器。
+- 定时巡检：Windows 任务计划程序或 Linux `crontab` 调用 `python main.py run`，也可以直接开启 Web 的「自动巡检」。
+
+## 项目结构
+
+```text
+netinspect/
+├── main.py                     # CLI 入口
+├── config.yaml                 # 数据库 / Ping / SSH / 设备配置
+├── devices.txt                 # 设备清单示例
+├── netinspect/
+│   ├── cli.py                  # run / scan / report / init-db / web
+│   ├── config.py               # 配置与设备清单解析
+│   ├── inventory.py            # 页面添加的真实设备（devices.yaml）
+│   ├── ping.py                 # Ping、CIDR/范围、并发
+│   ├── ssh.py                  # Paramiko 会话、提示符、分页
+│   ├── parsers.py              # 多厂商输出解析
+│   ├── collector.py            # 单设备巡检与并发调度
+│   ├── storage.py              # MySQL / SQLite 存储
+│   ├── report.py               # HTML 报告 / 终端摘要
+│   ├── web.py                  # Flask API、实时巡检、自动巡检
+│   └── templates/              # 报告与仪表盘模板
+├── demo/                       # 模拟华为 / Cisco SSH 设备
+├── docs/                       # GitHub Pages 静态演示
+├── sql/schema.sql              # MySQL DDL
+├── tests/                      # pytest
+└── .github/workflows/ci.yml    # CI
+```
+
+## 已知限制
+
+- Web 仪表盘没有账号体系，默认仅监听 `127.0.0.1`；不要直接暴露到公网。
+- `devices.yaml` 中密码为明文，仅适合本机/答辩环境；生产应接入凭据库或环境变量。
+- SSH 使用 `AutoAddPolicy`，生产环境应维护 `known_hosts` 并拒绝未知主机。
+- MySQL 路径的代码与 DDL 已完成，但当前开发环境没有 MySQL 服务，未做真机联调；SQLite 路径已完整验证。
+- 趋势与自动巡检基于当前进程状态，服务重启后自动巡检开关会重置。
+
+## Roadmap
+
+- 告警通知（邮件 / Webhook）与阈值规则
+- SNMP 采集与接口流量趋势
+- 巡检报告定时生成与归档
+- Web 登录、角色权限与操作审计
+- 设备配置备份与差异对比
