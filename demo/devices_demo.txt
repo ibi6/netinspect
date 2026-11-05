@@ -1,0 +1,7 @@
+# 演示清单：先启动两个模拟设备，再执行
+#   python demo/fake_device.py --vendor huawei --port 22201 --hostname CoreSW
+#   python demo/fake_device.py --vendor cisco  --port 22202 --hostname EdgeSW
+#   python main.py run --devices demo/devices_demo.txt --db-url sqlite:///demo.db
+127.0.0.1,CoreSW,huawei,22201
+127.0.0.1,EdgeSW,cisco,22202
+192.0.2.1,Offline-Site,,22

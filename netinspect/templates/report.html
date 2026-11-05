@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>网络设备巡检报告 #{{ run.id }}</title>
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 32px; font: 14px/1.6 "Segoe UI", "Microsoft YaHei", sans-serif;
+    background: #f5f6f8; color: #1f2328;
+  }
+  .page { max-width: 1400px; margin: 0 auto; }
+  h1 { margin: 0 0 6px; font-size: 24px; }
+  .meta { margin: 0 0 24px; color: #656d76; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .card { background: #fff; border: 1px solid #d8dee4; border-radius: 8px; padding: 14px 16px; }
+  .card .label { color: #656d76; font-size: 12px; }
+  .card .value { font-size: 26px; font-weight: 600; margin-top: 2px; }
+  .card.bad .value { color: #cf222e; }
+  .card.good .value { color: #1a7f37; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #d8dee4; border-radius: 8px; overflow: hidden; }
+  th, td { padding: 9px 10px; text-align: left; border-bottom: 1px solid #eaeef2; vertical-align: top; }
+  th { background: #f6f8fa; font-size: 12px; color: #57606a; white-space: nowrap; }
+  tbody tr:last-child td { border-bottom: 0; }
+  tr.bad td { background: #fff5f5; }
+  .tag { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; white-space: nowrap; }
+  .tag.ok { background: #dafbe1; color: #1a7f37; }
+  .tag.fail { background: #ffebe9; color: #cf222e; }
+  .mono { font-family: Consolas, "Courier New", monospace; }
+  .err { color: #cf222e; font-size: 12px; word-break: break-all; }
+  footer { margin-top: 20px; color: #8c959f; font-size: 12px; }
+  @media (prefers-color-scheme: dark) {
+    body { background: #0d1117; color: #e6edf3; }
+    .card, table { background: #161b22; border-color: #30363d; }
+    th { background: #1c2128; color: #8b949e; }
+    th, td { border-bottom-color: #30363d; }
+    tr.bad td { background: #2d1417; }
+    .meta, footer { color: #8b949e; }
+    .tag.ok { background: #12341d; color: #3fb950; }
+    .tag.fail { background: #3d1418; color: #f85149; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>网络设备巡检报告</h1>
+  <p class="meta">巡检编号 #{{ run.id }} · {{ run.started_at.strftime("%Y-%m-%d %H:%M:%S") }} ~ {{ run.finished_at.strftime("%Y-%m-%d %H:%M:%S") }}</p>
+
+  <section class="cards">
+    <div class="card"><div class="label">设备总数</div><div class="value">{{ stats.total }}</div></div>
+    <div class="card good"><div class="label">Ping 可达</div><div class="value">{{ stats.reachable }}</div></div>
+    <div class="card good"><div class="label">SSH 采集成功</div><div class="value">{{ stats.ssh_ok }}</div></div>
+    <div class="card {{ 'bad' if stats.failed else '' }}"><div class="label">异常设备</div><div class="value">{{ stats.failed }}</div></div>
+  </section>
+
+  <table>
+    <thead>
+      <tr>
+        <th>名称</th><th>IP</th><th>状态</th><th>主机名</th><th>厂商 / 型号</th>
+        <th>系统版本</th><th>运行时长</th><th>CPU</th><th>内存</th><th>接口 up/down</th>
+        <th>延迟</th><th>丢包</th><th>备注</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr class="{{ '' if row.ok else 'bad' }}">
+        <td>{{ row.name or "-" }}</td>
+        <td class="mono">{{ row.ip }}</td>
+        <td><span class="tag {{ 'ok' if row.ok else 'fail' }}">{{ row.status }}</span></td>
+        <td>{{ row.host }}</td>
+        <td>{{ row.vendor_model }}</td>
+        <td>{{ row.os_display }}</td>
+        <td>{{ row.uptime_display }}</td>
+        <td>{{ row.cpu_display }}</td>
+        <td>{{ row.mem_display }}</td>
+        <td>{{ row.interfaces_display }}</td>
+        <td>{{ row.latency_display }}</td>
+        <td>{{ row.loss_display }}</td>
+        <td class="err">{{ row.error_display }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <footer>由 netinspect 自动生成 · 共 {{ rows|length }} 台设备</footer>
+</div>
+</body>
+</html>

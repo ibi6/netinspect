@@ -1,0 +1,12 @@
+# 设备清单：每行 IP[,名称[,厂商[,端口]]]
+# 厂商可省略（自动识别），也支持 huawei / h3c / cisco / ruijie / juniper 提示
+# 端口缺省为 config.yaml 中的 ssh.port
+#
+# 192.168.1.1,核心交换机,huawei,22
+# 192.168.1.2,汇聚交换机,h3c,22
+# 192.168.1.254,出口路由器,cisco,22
+
+# 无真机演示（先运行 demo/fake_device.py 启动两个模拟设备）
+# 127.0.0.1,CoreSW,huawei,22201
+# 127.0.0.1,EdgeSW,cisco,22202
+# 192.0.2.1,Offline-Site,,22

@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "netinspect"
+version = "1.0.0"
+description = "网络设备自动巡检与监控系统：Ping、SSH、MySQL、Web 仪表盘"
+requires-python = ">=3.11"
+dependencies = [
+    "paramiko>=3.4",
+    "SQLAlchemy>=2.0",
+    "PyMySQL>=1.1",
+    "PyYAML>=6.0",
+    "Jinja2>=3.1",
+    "Flask>=3.0",
+]
+
+[tool.setuptools]
+packages = ["netinspect", "demo"]
+
+[tool.setuptools.package-data]
+netinspect = ["templates/*.html"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 110

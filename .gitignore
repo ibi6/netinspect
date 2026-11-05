@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.db
+*.sqlite3
+reports/*.html
+scratch*.py
+devices.yaml
+devices.yaml.tmp

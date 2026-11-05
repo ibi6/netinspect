@@ -1,0 +1,27 @@
+database:
+  # 本地 MySQL：先按 README 创建账号，再执行 python main.py init-db
+  url: "mysql+pymysql://root:your_password@127.0.0.1@127.0.0.1:3306/net_inspect?charset=utf8mb4"
+  echo: false
+
+ping:
+  count: 3
+  timeout_ms: 1000
+  workers: 32
+
+ssh:
+  port: 22
+  username: admin
+  password: demo
+  timeout: 10
+  command_timeout: 8
+  retries: 1
+
+# 也可以把设备直接写在配置里；使用 --devices 文件时以文件为准
+# devices:
+#   - ip: 192.168.1.1
+#     name: core-sw
+#     vendor: huawei
+#   - ip: 192.168.1.2
+#     name: access-sw
+#     vendor: h3c
+devices: []
